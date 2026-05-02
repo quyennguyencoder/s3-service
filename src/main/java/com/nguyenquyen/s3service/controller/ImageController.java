@@ -17,27 +17,54 @@ public class ImageController {
 
     private final S3Service s3Service;
 
-    // API Upload Ảnh
+    /**
+     * 1. API UPLOAD ẢNH
+     * Frontend sẽ gửi file và kèm theo cờ isPublic (true/false)
+     */
     @PostMapping("/upload")
-    public ResponseEntity<Map<String, String>> uploadImage(@RequestParam("file") MultipartFile file) {
+    public ResponseEntity<Map<String, String>> uploadImage(
+            @RequestParam("file") MultipartFile file,
+            @RequestParam(value = "isPublic", defaultValue = "true") boolean isPublic) {
         try {
-            String fileName = s3Service.uploadImage(file);
-            String imageUrl = s3Service.getImageUrl(fileName);
+            // Gọi Service đẩy lên S3 (Trả về "public/..." hoặc "private/...")
+            String keyName = s3Service.uploadImage(file, isPublic);
+
+            // Tạo URL tạm thời để Frontend có thể hiển thị ảnh vừa upload (Preview)
+            String previewUrl = isPublic
+                    ? s3Service.getPublicImageUrl(keyName)
+                    : s3Service.getPrivateImageUrl(keyName);
 
             Map<String, String> response = new HashMap<>();
-            response.put("fileName", fileName);
-            response.put("url", imageUrl);
+            // CỰC KỲ QUAN TRỌNG: Bạn lấy giá trị keyName này lưu vào Database
+            response.put("keyName", keyName);
+            response.put("previewUrl", previewUrl);
 
             return ResponseEntity.ok(response);
         } catch (Exception e) {
+            e.printStackTrace();
             return ResponseEntity.internalServerError().build();
         }
     }
 
-    // API Lấy URL Ảnh (Tùy chọn)
-    @GetMapping("/{fileName}")
-    public ResponseEntity<String> getImageUrl(@PathVariable String fileName) {
-        String url = s3Service.getImageUrl(fileName);
-        return ResponseEntity.ok(url);
+    /**
+     * 2. API LẤY LINK XEM ẢNH
+     * Dùng khi Frontend đọc từ DB ra được cái keyName và muốn lấy link hiển thị
+     */
+    @GetMapping("/view")
+    public ResponseEntity<Map<String, String>> getImageUrl(@RequestParam("keyName") String keyName) {
+        String viewUrl;
+
+        // Dựa vào tiền tố (prefix) để quyết định cách tạo link
+        if (keyName.startsWith("public/")) {
+            viewUrl = s3Service.getPublicImageUrl(keyName);
+        } else if (keyName.startsWith("private/")) {
+            viewUrl = s3Service.getPrivateImageUrl(keyName); // Sinh link sống 15 phút
+        } else {
+            return ResponseEntity.badRequest().build();
+        }
+
+        Map<String, String> response = new HashMap<>();
+        response.put("url", viewUrl);
+        return ResponseEntity.ok(response);
     }
 }

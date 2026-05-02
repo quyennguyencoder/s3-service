@@ -29,4 +29,14 @@ public class S3Config {
                 .credentialsProvider(StaticCredentialsProvider.create(credentials))
                 .build();
     }
+
+    // THÊM BEAN NÀY ĐỂ TẠO LINK PRIVATE
+    @Bean
+    public S3Presigner s3Presigner() {
+        AwsBasicCredentials credentials = AwsBasicCredentials.create(accessKey, secretKey);
+        return S3Presigner.builder()
+                .region(Region.of(region))
+                .credentialsProvider(StaticCredentialsProvider.create(credentials))
+                .build();
+    }
 }
