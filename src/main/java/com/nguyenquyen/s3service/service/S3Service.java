@@ -27,9 +27,11 @@ public class S3Service {
 
     // 1. Hàm Upload File
     public String uploadImage(MultipartFile file) throws IOException {
+        boolean isPublic = true; // Hoặc có thể lấy từ tham số nếu muốn phân biệt public/private
+        String folderPrefix = isPublic ? "public/" : "private/";
         String originalFilename = file.getOriginalFilename();
         String extension = originalFilename != null ? originalFilename.substring(originalFilename.lastIndexOf(".")) : "";
-        String uniqueFileName = UUID.randomUUID().toString() + extension;
+        String uniqueFileName = folderPrefix + UUID.randomUUID().toString() + extension;
 
         PutObjectRequest putObjectRequest = PutObjectRequest.builder()
                 .bucket(bucketName)
